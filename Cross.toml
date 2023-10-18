@@ -1,7 +1,7 @@
 [build]
 default-target = "arm-unknown-linux-gnueabihf"    # use this target if none is explicitly provided
 pre-build = [ 
-    "apt update",
-    "apt install libasound-dev -y",
-    "apt install libasound2-dev -y"
+    "apt-get update",
+    "apt-get install libasound-dev -y",
+    "apt-get install libasound2-dev -y"
 ]
