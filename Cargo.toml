@@ -8,9 +8,10 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 clap = {version = "4.0", features = ["derive"]}
-cpal = "0.15.2"
 ringbuf = "0.3"
 hound = "3.5"
+alsa = "0.8.1"
+
 
 [[bin]]
 name = "pika_pulse"

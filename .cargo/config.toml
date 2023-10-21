@@ -1,0 +1,18 @@
+[target.arm-unknown-linux-gnueabihf]
+linker = "arm-linux-gnueabihf-gcc"
+rustflags = [
+  "-C", "link-arg=-L/usr/arm-linux-gnueabihf/lib",
+]
+
+[target.arm-unknown-linux-musleabihf]
+linker = "arm-linux-musleabihf-gcc"
+rustflags = [
+  "-C", "link-arg=-L/usr/arm-linux-musleabihf/lib", # Ensure this path is correct for your musl libraries.
+]
+
+[target.arm-unknown-linux-gnueabi]
+linker = "arm-linux-gnueabi-gcc"
+rustflags = [
+  "-C", "link-arg=-L/usr/arm-linux-gnueabi/lib",
+]
+
