@@ -1,6 +1,6 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, FromSample, Sample, Stream, SupportedStreamConfig};
-use hound::{WavSpec, WavWriter};
+use hound::{SampleFormat, WavSpec, WavWriter};
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::PathBuf;
@@ -15,7 +15,7 @@ pub struct AudioClip {
     output_config: SupportedStreamConfig,
     input_stream: Option<Stream>,
     output_stream: Option<Stream>,
-    samples: Vec<f32>,
+    samples: Arc<Mutex<Vec<f32>>>,
     is_recording: bool,
     is_playing: bool,
     current_position: usize,
@@ -51,7 +51,7 @@ impl AudioClip {
             output_config,
             input_stream: None,
             output_stream: None,
-            samples: Vec::new(),
+            samples: Arc::new(Mutex::new(Vec::<f32>::new())),
             is_recording: false,
             is_playing: false,
             current_position: 0,
@@ -75,7 +75,13 @@ impl AudioClip {
         self.finalize_writer_for_recording(writer)?;
         self.is_recording = false;
         println!("Recording Finished");
-        println!("Recorded {} samples", self.samples.len());
+
+        let samples_len = {
+            let samples_guard = self.samples.lock().unwrap();
+            samples_guard.len()
+        };
+
+        println!("Recorded {} samples", samples_len);
 
         Ok(())
     }
@@ -88,35 +94,17 @@ impl AudioClip {
 
     fn setup_input_stream(&mut self, writer: &WavWriterHandle) -> Result<(), anyhow::Error> {
         let writer_clone = Arc::clone(&writer);
+        let samples_clone = Arc::clone(&self.samples);
         let err_fn = |err| eprintln!("an error occurred on stream: {}", err);
 
-        self.input_stream = Some(match self.input_config.sample_format() {
-            cpal::SampleFormat::I8 => self.input_device.build_input_stream(
-                &self.input_config.clone().into(),
-                move |data, _: &_| AudioClip::write_input_data::<i8, i8>(data, &writer_clone),
-                err_fn,
-                None,
-            )?,
-            cpal::SampleFormat::I16 => self.input_device.build_input_stream(
-                &self.input_config.clone().into(),
-                move |data, _: &_| AudioClip::write_input_data::<i16, i16>(data, &writer_clone),
-                err_fn,
-                None,
-            )?,
-            cpal::SampleFormat::I32 => self.input_device.build_input_stream(
-                &self.input_config.clone().into(),
-                move |data, _: &_| AudioClip::write_input_data::<i32, i32>(data, &writer_clone),
-                err_fn,
-                None,
-            )?,
-            cpal::SampleFormat::F32 => self.input_device.build_input_stream(
-                &self.input_config.clone().into(),
-                move |data, _: &_| AudioClip::write_input_data::<f32, f32>(data, &writer_clone),
-                err_fn,
-                None,
-            )?,
-            _ => return Err(anyhow::Error::msg("Unsupported sample format")),
-        });
+        self.input_stream = Some(self.input_device.build_input_stream(
+            &self.input_config.clone().into(),
+            move |data: &[f32], _: &_| {
+                AudioClip::write_input_data(data, &writer_clone, &samples_clone)
+            },
+            err_fn,
+            None,
+        )?);
         Ok(())
     }
 
@@ -134,24 +122,19 @@ impl AudioClip {
         Ok(())
     }
 
-    fn finalize_writer_for_recording(
-        &self,
-        writer: Arc<Mutex<Option<WavWriter<BufWriter<File>>>>>,
-    ) -> Result<(), anyhow::Error> {
+    fn finalize_writer_for_recording(&self, writer: WavWriterHandle) -> Result<(), anyhow::Error> {
         writer.lock().unwrap().take().unwrap().finalize()?;
         Ok(())
     }
 
-    fn write_input_data<T, U>(input: &[T], writer: &WavWriterHandle)
-    where
-        T: Sample,
-        U: Sample + hound::Sample + FromSample<T>,
-    {
+    fn write_input_data(input: &[f32], writer: &WavWriterHandle, samples: &Arc<Mutex<Vec<f32>>>) {
         if let Ok(mut guard) = writer.try_lock() {
             if let Some(writer) = guard.as_mut() {
+                let mut samples_guard = samples.lock().unwrap();
                 for &sample in input.iter() {
-                    let sample: U = U::from_sample(sample);
+                    // let sample: U = U::from_sample(sample);
                     writer.write_sample(sample).ok();
+                    samples_guard.push(sample);
                 }
             }
         }
@@ -161,16 +144,8 @@ impl AudioClip {
         WavSpec {
             channels: config.channels() as _,
             sample_rate: config.sample_rate().0 as _,
-            bits_per_sample: (config.sample_format().sample_size() * 8) as _,
-            sample_format: AudioClip::sample_format(config.sample_format()),
-        }
-    }
-
-    fn sample_format(format: cpal::SampleFormat) -> hound::SampleFormat {
-        if format.is_float() {
-            hound::SampleFormat::Float
-        } else {
-            hound::SampleFormat::Int
+            bits_per_sample: 32,
+            sample_format: SampleFormat::Float,
         }
     }
 }
