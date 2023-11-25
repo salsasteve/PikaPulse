@@ -18,7 +18,7 @@ enum Commands {
     Record {
         /// The name of the clip to record. If not specified, the current date and time will be used.
         clip_name: Option<String>,
-        clip_length: Option<u32>,
+        clip_length: Option<u64>,
     },
     /// List all clips.
     List,
@@ -53,14 +53,13 @@ fn main() -> Result<()> {
             println!("Clip filename: {}", clip_name);
             println!("Clip length: {}", clip_length);
 
-            
-            let mut clip = AudioClip::new("default", clip_name, clip_length).expect("Failed to create AudioClip");
-            
-            // Start recording
+            let mut clip =
+                AudioClip::new(clip_name, clip_length).expect("Failed to create AudioClip");
+
             clip.record().expect("Failed to record");
 
-            // Finalize and save the recording
-            clip.finalize().expect("Failed to finalize recording");
+            // // Finalize and save the recording
+            // clip.finalize().expect("Failed to finalize recording");
         }
         Commands::List => {
             println!("{:5} {:30} {:30}", "id", "name", "date");
