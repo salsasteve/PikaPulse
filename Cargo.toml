@@ -13,7 +13,20 @@ cpal = "0.15.2"
 color-eyre = "0.6.2"
 ringbuf = "0.3"
 chrono = "0.4.31"
+rodio = "0.17.3"
 
 [[bin]]
 name = "pika_pulse"
-path = "main.rs"
+
+[dev-dependencies]
+minimp3 = "0.5.1"
+lowpass-filter = "0.3.2"
+spectrum-analyzer = "1.5.0"
+biquad = "0.4.2"
+audio-visualizer = "0.4.0"
+rustfft = "6.1.0"
+ringbuffer = "0.15.0"
+plotters = "0.3.5"
+ratatui = "0.24.0"
+crossterm = "0.27.0"
+nannou = "0.18.1"

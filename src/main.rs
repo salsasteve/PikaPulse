@@ -39,6 +39,7 @@ enum Commands {
 fn main() -> Result<()> {
     color_eyre::install()?;
     let args = Cli::parse();
+    // let mut audio_clips: HashMap<String, AudioClip> = HashMap::new();
 
     match args.command {
         Commands::Record {
@@ -54,19 +55,22 @@ fn main() -> Result<()> {
             println!("Clip length: {}", clip_length);
 
             let mut clip =
-                AudioClip::new(clip_name, clip_length).expect("Failed to create AudioClip");
+                AudioClip::new(clip_name.clone(), clip_length).expect("Failed to create AudioClip");
 
             clip.record().expect("Failed to record");
 
-            // // Finalize and save the recording
-            // clip.finalize().expect("Failed to finalize recording");
+            // audio_clips.insert(clip_name, clip);
         }
         Commands::List => {
-            println!("{:5} {:30} {:30}", "id", "name", "date");
             // Implement list functionality here
+            println!("List");
+            // for (name, _clip) in audio_clips.iter() {
+            //     println!("Clip name: {}", name);
+            // }
         }
         Commands::Play { clip_name } => {
             println!("Play {}", clip_name);
+            let _ = AudioClip::play(clip_name);
             // Implement play functionality here
         }
         Commands::Delete { clip_name } => {

@@ -1,12 +1,13 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Device, FromSample, Sample, Stream, SupportedStreamConfig};
-use hound::{SampleFormat, WavSpec, WavWriter};
+use cpal::{Device, Stream, StreamConfig, SupportedStreamConfig, default_host};
+use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
 use std::fs::File;
-use std::io::BufWriter;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::io::BufWriter;
 use std::thread::sleep;
 use std::time::Duration;
+use std::sync::mpsc::channel;
 
 pub struct AudioClip {
     input_device: Device,
@@ -24,7 +25,6 @@ pub struct AudioClip {
 }
 
 type WavWriterHandle = Arc<Mutex<Option<WavWriter<BufWriter<File>>>>>;
-// type WavReaderHandle = Arc<Mutex<Option<WavReader<BufReader<File>>>>>;
 
 impl AudioClip {
     pub fn new(clip_name: String, clip_length: u64) -> Result<Self, anyhow::Error> {
@@ -67,10 +67,10 @@ impl AudioClip {
 
         println!("Recording Started");
         self.is_recording = true;
-        self.start_stream()?;
+        self.start_stream1()?;
 
         sleep(self.clip_length);
-        self.stop_stream()?;
+        self.stop_stream1()?;
 
         self.finalize_writer_for_recording(writer)?;
         self.is_recording = false;
@@ -87,9 +87,18 @@ impl AudioClip {
     }
 
     fn setup_writer_for_recording(&self) -> Result<WavWriterHandle, anyhow::Error> {
-        let spec = AudioClip::wav_spec_from_config(&self.input_config);
+        let spec = AudioClip::wav_spec_from_config(&self.output_config);
         let writer = WavWriter::create(&self.file_path, spec)?;
         Ok(Arc::new(Mutex::new(Some(writer))))
+    }
+
+    fn read_wav_file(file_path: PathBuf) -> Result<Arc<Mutex<Vec<f32>>>, anyhow::Error> {
+        let reader = WavReader::open(file_path)?;
+        let samples = Arc::new(Mutex::new(reader
+            .into_samples::<f32>()
+            .filter_map(Result::ok)
+            .collect()));
+        Ok(samples)
     }
 
     fn setup_input_stream(&mut self, writer: &WavWriterHandle) -> Result<(), anyhow::Error> {
@@ -108,17 +117,72 @@ impl AudioClip {
         Ok(())
     }
 
-    fn start_stream(&self) -> Result<(), anyhow::Error> {
+    fn setup_output_stream(output_config: &StreamConfig, output_device: &Device, samples: Arc<Mutex<Vec<f32>>>) -> Result<Stream, anyhow::Error> {
+        // let samples_clone = Arc::clone(&samples);
+        let err_fn = |err| eprintln!("an error occurred on stream: {}", err);
+
+        // let output_stream = output_device.build_output_stream(
+        //     &output_config.clone().into(),
+        //     move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+        //         // Acquire a lock on the samples
+        //         let samples_guard = &samples.lock().unwrap();
+
+        //         // Iterate over the output buffer and the samples, cycling through the samples if needed
+        //         for (output_sample, &wav_sample) in data.iter_mut().zip(samples_guard.iter().cycle()) {
+        //             *output_sample = wav_sample;
+        //         }
+        //     },
+        //     err_fn,
+        //     None,
+        // )?;
+        let stream = output_device.build_output_stream(
+            output_config,
+            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                let samples_guard = &samples.lock().unwrap();
+                for (output_sample, &wav_sample) in data.iter_mut().zip(samples_guard.iter().cycle()) {
+                    *output_sample = wav_sample;
+                }
+            },
+            err_fn,
+            None,
+        )?;
+
+        // let output_stream = output_device.build_output_stream(
+        //     &output_config.clone().into(),
+        //     move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+        //         let mut ss = samples_clone.lock().unwrap();
+        //         for s in data.iter_mut() {
+        //             *s = ss.next().unwrap_or(0.0);
+        //         }
+        //     },
+        //     err_fn,
+        //     None,
+        // )?;
+
+        Ok(stream)
+    }
+
+    fn start_stream1(&self) -> Result<(), anyhow::Error> {
         if let Some(stream) = &self.input_stream {
             stream.play()?;
         }
         Ok(())
     }
 
-    fn stop_stream(&self) -> Result<(), anyhow::Error> {
+    fn stop_stream1(&self) -> Result<(), anyhow::Error> {
         if let Some(stream) = &self.input_stream {
             stream.pause()?;
         }
+        Ok(())
+    }
+
+    fn start_stream(stream: &Stream) -> Result<(), anyhow::Error> {
+        stream.play()?;
+        Ok(())
+    }
+
+    fn stop_stream(stream: &Stream) -> Result<(), anyhow::Error> {
+        stream.pause()?;
         Ok(())
     }
 
@@ -132,7 +196,6 @@ impl AudioClip {
             if let Some(writer) = guard.as_mut() {
                 let mut samples_guard = samples.lock().unwrap();
                 for &sample in input.iter() {
-                    // let sample: U = U::from_sample(sample);
                     writer.write_sample(sample).ok();
                     samples_guard.push(sample);
                 }
