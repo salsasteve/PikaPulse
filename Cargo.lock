@@ -2560,7 +2560,6 @@ dependencies = [
  "nannou",
  "plotters",
  "ratatui",
- "ringbuf",
  "ringbuffer",
  "rodio",
  "rustfft",
@@ -2926,15 +2925,6 @@ name = "renderdoc-sys"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1382d1f0a252c4bf97dc20d979a2fdd05b024acd7c2ed0f7595d7817666a157"
-
-[[package]]
-name = "ringbuf"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79abed428d1fd2a128201cec72c5f6938e2da607c6f3745f769fabea399d950a"
-dependencies = [
- "crossbeam-utils 0.8.16",
-]
 
 [[package]]
 name = "ringbuffer"
