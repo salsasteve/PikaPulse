@@ -69,4 +69,15 @@ impl Recorder {
     pub fn get_latest_audio_data(&self) -> Arc<Mutex<AllocRingBuffer<f32>>> {
         self.latest_audio_data.clone()
     }
+
+    // pub fn record(&mut self) {
+        
+    // }
+
+    // fn setup_writer_for_recording(&self) -> Result<WavWriterHandle, anyhow::Error> {
+    //     let spec = AudioClip::wav_spec_from_config(&self.output_config);
+    //     let writer = WavWriter::create(&self.file_path, spec)?;
+    //     Ok(Arc::new(Mutex::new(Some(writer))))
+    // }
+
 }

@@ -11,6 +11,7 @@ use std::cell::Ref;
 use std::cell::RefCell;
 use std::cmp::max;
 use std::sync::{Arc, Mutex};
+use pika_pulse::visualizer::circle::sun;
 
 struct Model {
     _window: window::Id,
@@ -95,7 +96,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     // Draw the spectrum as a polyline
     draw.polyline().points(scaled_points).color(PALEGOLDENROD);
 
-    rainbow_circle3(&draw, &spectrum_data, 0.1, win, 3.0);
+    sun(&draw, &spectrum_data, 0.1, win, 3.0);
 
     draw.to_frame(app, &frame).unwrap();
 }
