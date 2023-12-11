@@ -15,6 +15,7 @@ ringbuffer = "0.15.0"
 chrono = "0.4.31"
 rodio = "0.17.3"
 audio-visualizer = "0.4.0"
+dotenv = "0.15.0"
 
 [dev-dependencies]
 minimp3 = "0.5.1"
