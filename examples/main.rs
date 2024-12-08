@@ -1,16 +1,14 @@
 use dotenv::dotenv;
 use nannou::prelude::*;
-use nannou::Draw;
+use nannou;
 use pika_pulse::recorder::Recorder;
-use ringbuffer::{AllocRingBuffer, RingBuffer};
+use ringbuffer::RingBuffer;
 use spectrum_analyzer::{
     samples_fft_to_spectrum, scaling::divide_by_N, windows::hann_window, FrequencyLimit,
     FrequencySpectrum, FrequencyValue,
 };
-use std::cell::Ref;
 use std::cell::RefCell;
 use std::cmp::max;
-use std::sync::{Arc, Mutex};
 use pika_pulse::visualizer::circle::sun;
 
 struct Model {
@@ -120,13 +118,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
 //     devs.remove(index).1
 // }
 
-/// Initializes a ring buffer for audio data storage.
-fn init_ringbuffer(sampling_rate: usize) -> Arc<Mutex<AllocRingBuffer<f32>>> {
-    let mut buf = AllocRingBuffer::new((5 * sampling_rate).next_power_of_two());
-    buf.fill(0.0);
-    Arc::new(Mutex::new(buf))
-}
-
 /// Processes audio data to generate a frequency spectrum.
 fn to_spectrum(
     audio: &[f32],
@@ -187,163 +178,4 @@ fn update_visualization(
         });
 
     visualize_spectrum.borrow().clone()
-}
-
-fn draw_visualization(
-    draw: &Draw,
-    spectrum: &Ref<Vec<(f64, f64)>>,
-    amplitude: f32,
-    radius: f32,
-    number_of_points: usize,
-) {
-    // Clear the background
-    draw.background().color(WHITE);
-
-    // Set the center of the circle
-    let center = vec2(0.0, 0.0);
-
-    // Ensure we don't exceed the length of the spectrum data
-    let spectrum_len = spectrum.len();
-    let points_to_draw = number_of_points.min(spectrum_len / 2);
-
-    // Iterate over the number of points to create the circle
-    for i in 0..points_to_draw {
-        // Assuming the second element of the tuple is the magnitude
-        let (_, magnitude) = spectrum[i * 2]; // Adjust index based on your spectrum data
-        let size = magnitude.powi(2) as f32; // Squaring the value for greater dynamic range
-
-        // Calculate the angle for each point
-        let angle = 2.0 * PI * i as f32 / number_of_points as f32;
-        let (sin_angle, cos_angle) = angle.sin_cos();
-        let inner_point = center + vec2(sin_angle, cos_angle) * radius;
-
-        // Calculate the modifier based on the spectrum and amplitude
-        let modifier = (1.0 + size / 2.0) * (1.0 + amplitude / 10.0);
-
-        // Calculate the outer point of the line
-        let outer_point = inner_point * modifier;
-
-        // Set the stroke weight and color based on amplitude and position
-        draw.line()
-            .start(inner_point)
-            .end(outer_point)
-            .weight((amplitude + 1.0) * 10.0)
-            .hsv(i as f32 / points_to_draw as f32, 1.0, 1.0); // Rainbow color
-    }
-}
-
-fn rainbow_circle(
-    draw: &Draw,
-    spectrum: &Ref<Vec<(f64, f64)>>,
-    amplitude: f32,
-    radius: f32,
-    win: Rect,
-) {
-    let num_bins = spectrum.len();
-    let half_num_bins = num_bins / 2; // Use half the spectrum for a full circle
-    const TWO_PI: f32 = 2.0 * PI;
-
-    // Iterate over the spectrum data to create the circular visualization
-    for (index, &(_, y)) in spectrum.iter().enumerate().take(half_num_bins) {
-        // Map the index to an angle around the circle
-        let angle = map_range(index, 0, half_num_bins, 0.0, TWO_PI);
-        let (sin_angle, cos_angle) = angle.sin_cos();
-        let inner_point = Vec2::new(sin_angle, cos_angle) * radius;
-
-        // Scale the magnitude (y-value)
-        let scaled_magnitude = map_range(y as f32, 0.0, 1.0, 0.0, win.h() / 2.0); // Assuming y in 0..1
-
-        // Apply amplitude to scaling
-        let modifier = (1.0 + scaled_magnitude / 2.0) * (1.0 + amplitude / 10.0);
-
-        // Calculate the outer point of the line
-        let outer_point = inner_point * modifier;
-
-        // Set the stroke weight and color based on amplitude and position
-        let hue = map_range(index, 0, half_num_bins, 0.0, 1.0);
-        draw.line()
-            .start(inner_point)
-            .end(outer_point)
-            .weight((amplitude + 1.0) * 10.0)
-            .hsv(hue, 1.0, 1.0); // Rainbow color
-    }
-}
-
-fn rainbow_circle2(draw: &Draw, spectrum: &Ref<Vec<(f64, f64)>>, amplitude: f32, win: Rect) {
-    const TWO_PI: f32 = 2.0 * PI;
-    let num_bins = spectrum.len();
-    let half_num_bins = num_bins / 2; // Use half the spectrum for a full circle
-
-    // Calculate the radius based on the smaller dimension of the window
-    let radius = win.w().min(win.h()) * 0.1; // 40% of the smaller dimension
-
-    // Iterate over the spectrum data to create the circular visualization
-    for (index, &(_, y)) in spectrum.iter().enumerate().take(half_num_bins) {
-        // Map the index to an angle around the circle
-        let angle = map_range(index, 0, half_num_bins, 0.0, TWO_PI);
-        let (sin_angle, cos_angle) = angle.sin_cos();
-        let inner_point = Vec2::new(sin_angle, cos_angle) * radius;
-
-        // Scale the magnitude (y-value)
-        let scaled_magnitude = map_range(y as f32, 0.0, 1.0, 0.0, radius); // Scaled relative to radius
-
-        // Apply amplitude to scaling
-        let modifier = 1.0 + scaled_magnitude * (1.0 + amplitude);
-
-        // Calculate the outer point of the line
-        let outer_point =
-            inner_point + Vec2::new(sin_angle, cos_angle) * scaled_magnitude * modifier;
-
-        // Set the stroke weight and color based on amplitude and position
-        let hue = map_range(index, 0, half_num_bins, 0.0, 1.0);
-        draw.line()
-            .start(inner_point + Vec2::new(win.w() / 2.0, win.h() / 2.0))
-            .end(outer_point + Vec2::new(win.w() / 2.0, win.h() / 2.0))
-            .weight((amplitude + 1.0) * 2.0)
-            .hsv(hue, 1.0, 1.0); // Rainbow color
-    }
-}
-
-fn rainbow_circle3(
-    draw: &Draw,
-    spectrum: &Ref<Vec<(f64, f64)>>,
-    amplitude: f32,
-    win: Rect,
-    line_weight: f32,
-) {
-    const TWO_PI: f32 = 2.0 * PI;
-    // number of bins to be used for the full circle
-    // number of points to be used for the full circle
-    let num_bins = spectrum.len();
-    // number used to divide the spectrum
-    let bin_divisor: usize = 8;
-    let bins_used = num_bins / bin_divisor;
-    // Calculate the radius based on the smaller dimension of the window
-    let radius = win.w().min(win.h()) * 0.2; // 40% of the smaller dimension
-
-    // Center of the window
-    let center = Vec2::new(win.x(), win.y());
-
-    // Iterate over the spectrum data to create the circular visualization
-    for (index, &(_, y)) in spectrum.iter().enumerate().take(bins_used) {
-        // Map the index to an angle around the circle
-        let angle = map_range(index, 0, bins_used, 0.0, TWO_PI);
-        let (sin_angle, cos_angle) = angle.sin_cos();
-        let inner_point = center + Vec2::new(sin_angle, cos_angle) * radius;
-
-        // Scale the magnitude (y-value)
-        let scaled_magnitude = map_range(y as f32, 0.0, 1.0, 0.0, radius); // Scaled relative to radius
-
-        // Calculate the outer point of the line
-        let outer_point =
-            inner_point + Vec2::new(sin_angle, cos_angle) * scaled_magnitude * amplitude;
-
-        // Set the stroke weight and color based on amplitude and position
-        let hue = map_range(index, 0, bins_used, 0.0, 1.0);
-        draw.line()
-            .start(inner_point)
-            .end(outer_point)
-            .weight(line_weight)
-            .hsv(hue, 1.0, 1.0); // Rainbow color
-    }
 }
