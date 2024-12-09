@@ -1,15 +1,15 @@
 use audio_visualizer::dynamic::live_input::setup_audio_input_loop;
 use audio_visualizer::dynamic::live_input::{list_input_devs, AudioDevAndCfg};
-use ringbuffer::{AllocRingBuffer, RingBuffer};
-use std::sync::{Arc, Mutex};
-use std::io::{stdin, BufRead};
 use cpal::traits::DeviceTrait;
 use cpal::traits::StreamTrait;
+use ringbuffer::{AllocRingBuffer, RingBuffer};
+use spectrum_analyzer::scaling::divide_by_N;
 use spectrum_analyzer::windows::hann_window;
 use spectrum_analyzer::{samples_fft_to_spectrum, FrequencyLimit, FrequencyValue};
-use spectrum_analyzer::scaling::divide_by_N;
 use std::cell::RefCell;
 use std::cmp::max;
+use std::io::{stdin, BufRead};
+use std::sync::{Arc, Mutex};
 
 fn main() {
     let in_dev = select_input_dev();
@@ -77,8 +77,6 @@ fn main() {
     // );
 
     // stream.pause().unwrap();
-
-    
 }
 
 fn select_input_dev() -> cpal::Device {
@@ -109,4 +107,3 @@ fn init_ringbuffer(sampling_rate: usize) -> Arc<Mutex<AllocRingBuffer<f32>>> {
     buf.fill(0.0);
     Arc::new(Mutex::new(buf))
 }
-

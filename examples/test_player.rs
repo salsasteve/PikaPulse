@@ -1,14 +1,13 @@
 // use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 // use hound::WavReader;
 // use std::sync::mpsc::{channel, Sender};
-use std::sync::{Arc, Mutex};
+use rodio::{Decoder, OutputStream};
 use std::fs::File;
 use std::io::BufReader;
-use rodio::{Decoder, OutputStream};
+use std::sync::{Arc, Mutex};
 
 // type StateHandle = Arc<Mutex<Option<(usize, Vec<f32>, Sender<()>)>>>;
 fn main() {
-
     // Get a output stream handle to the default physical sound device
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
     let sink = rodio::Sink::try_new(&stream_handle).unwrap();
@@ -26,7 +25,6 @@ fn main() {
     // The sound plays in a separate audio thread,
     // so we need to keep the main thread alive while it's playing.
     // std::thread::sleep(std::time::Duration::from_secs(5));
-    
 }
 
 struct CustomDecoder {
@@ -34,17 +32,12 @@ struct CustomDecoder {
 }
 
 impl CustomDecoder {
-    pub fn new() -> Result<Self, anyhow::Error>  {
-        
-      Ok(CustomDecoder{
-        shared_samples: Arc::new(Mutex::new(Vec::<f32>::new()))
-      })
+    pub fn new() -> Result<Self, anyhow::Error> {
+        Ok(CustomDecoder {
+            shared_samples: Arc::new(Mutex::new(Vec::<f32>::new())),
+        })
     }
-
-
 }
-
-
 
 // fn write_output_data(output: &mut [f32], number_of_channels: usize, state: &StateHandle) {
 //     if let Ok(mut guard) = state.try_lock() {
@@ -94,7 +87,6 @@ impl CustomDecoder {
 //     root.present()?;
 //     Ok(())
 // }
-
 
 // fn play_sample_cpal(){
 

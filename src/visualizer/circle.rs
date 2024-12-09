@@ -1,10 +1,9 @@
-use std::f32::consts::PI;
-use nannou::Draw;
-use std::cell::Ref;
-use nannou::prelude::Vec2;
 use nannou::math::map_range;
 use nannou::prelude::Rect;
-
+use nannou::prelude::Vec2;
+use nannou::Draw;
+use std::cell::Ref;
+use std::f32::consts::PI;
 
 pub fn sun(
     draw: &Draw,

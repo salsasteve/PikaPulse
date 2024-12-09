@@ -1653,9 +1653,9 @@ checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
 
 [[package]]
 name = "libm"
-version = "0.2.8"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
+checksum = "8355be11b20d696c8f18f6cc018c4e372165b1fa8126cef092399c9951984ffa"
 
 [[package]]
 name = "libredox"
@@ -1866,6 +1866,17 @@ name = "microfft"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "556b5d8420cb2e761b21eedb5cae7525bf6838144151a3bec546e9969162dadc"
+dependencies = [
+ "cfg-if 1.0.0",
+ "num-complex",
+ "static_assertions",
+]
+
+[[package]]
+name = "microfft"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b6673eb0cc536241d6734c2ca45abfdbf90e9e7791c66a36a7ba3c315b76cf"
 dependencies = [
  "cfg-if 1.0.0",
  "num-complex",
@@ -2562,7 +2573,9 @@ dependencies = [
  "crossterm",
  "dotenv",
  "hound",
+ "libm 0.2.11",
  "lowpass-filter",
+ "microfft 0.6.0",
  "minimp3",
  "nannou",
  "plotters",
@@ -2571,6 +2584,7 @@ dependencies = [
  "rodio",
  "rustfft",
  "spectrum-analyzer",
+ "tracing",
 ]
 
 [[package]]
@@ -3247,8 +3261,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed9fa67f04b0a6424c19937498597aeb8a78fd9b20d3a010bc78b06f721f73e7"
 dependencies = [
  "float-cmp",
- "libm 0.2.8",
- "microfft",
+ "libm 0.2.11",
+ "microfft 0.5.1",
  "paste",
 ]
 
@@ -3495,19 +3509,31 @@ dependencies = [
 
 [[package]]
 name = "tracing"
-version = "0.1.40"
+version = "0.1.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3523ab5a71916ccf420eebdf5521fcef02141234bbc0b8a49f2fdc4544364ef"
+checksum = "784e0ac535deb450455cbfa28a6f0df145ea1bb7ae51b821cf5e7927fdcfbdd0"
 dependencies = [
  "pin-project-lite",
+ "tracing-attributes",
  "tracing-core",
 ]
 
 [[package]]
-name = "tracing-core"
-version = "0.1.32"
+name = "tracing-attributes"
+version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c06d3da6113f116aaee68e4d601191614c9053067f9ab7f6edbcb161237daa54"
+checksum = "395ae124c09f9e6918a2310af6038fba074bcf474ac352496d5910dd59a2226d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.38",
+]
+
+[[package]]
+name = "tracing-core"
+version = "0.1.33"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e672c95779cf947c5311f83787af4fa8fffd12fb27e4993211a84bdfd9610f9c"
 dependencies = [
  "once_cell",
  "valuable",

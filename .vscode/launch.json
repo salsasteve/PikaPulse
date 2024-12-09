@@ -1,0 +1,286 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'pika_pulse'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "pika_pulse",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'beep'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=beep",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "beep",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'beep'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=beep",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "beep",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'draw'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=draw",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "draw",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'draw'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=draw",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "draw",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'main'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=main",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "main",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'main'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=main",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "main",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'myvis'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=myvis",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "myvis",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'myvis'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=myvis",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "myvis",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'plot_data'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=plot_data",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "plot_data",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'plot_data'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=plot_data",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "plot_data",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'test_player'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=test_player",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "test_player",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'test_player'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=test_player",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "test_player",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'visualizer'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=visualizer",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "visualizer",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'visualizer'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=visualizer",
+                    "--package=pika_pulse"
+                ],
+                "filter": {
+                    "name": "visualizer",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

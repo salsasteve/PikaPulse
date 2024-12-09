@@ -1,13 +1,13 @@
 use audio_visualizer::dynamic::live_input::{list_input_devs, AudioDevAndCfg};
 use audio_visualizer::dynamic::window_top_btm::{open_window_connect_audio, TransformFn};
 use cpal::traits::DeviceTrait;
+use cpal::traits::StreamTrait;
 use spectrum_analyzer::scaling::divide_by_N;
 use spectrum_analyzer::windows::hann_window;
 use spectrum_analyzer::{samples_fft_to_spectrum, FrequencyLimit, FrequencyValue};
 use std::cell::RefCell;
 use std::cmp::max;
 use std::io::{stdin, BufRead};
-use cpal::traits::StreamTrait;
 
 /// Example that creates a live visualization of the frequency spectrum of realtime audio data
 /// **Execute this with `--release`, otherwise it is very laggy!**.

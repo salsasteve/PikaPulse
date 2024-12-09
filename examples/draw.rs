@@ -1,16 +1,16 @@
-use nannou::prelude::*;
-use std::sync::{Arc, Mutex};
-use std::cell::RefCell;
 use audio_visualizer::dynamic::live_input::setup_audio_input_loop;
 use audio_visualizer::dynamic::live_input::{list_input_devs, AudioDevAndCfg};
-use ringbuffer::{AllocRingBuffer, RingBuffer};
-use std::io::{stdin, BufRead};
 use cpal::traits::DeviceTrait;
 use cpal::traits::StreamTrait;
+use nannou::prelude::*;
+use ringbuffer::{AllocRingBuffer, RingBuffer};
+use spectrum_analyzer::scaling::divide_by_N;
 use spectrum_analyzer::windows::hann_window;
 use spectrum_analyzer::{samples_fft_to_spectrum, FrequencyLimit, FrequencyValue};
-use spectrum_analyzer::scaling::divide_by_N;
+use std::cell::RefCell;
 use std::cmp::max;
+use std::io::{stdin, BufRead};
+use std::sync::{Arc, Mutex};
 
 struct Model {
     _window: window::Id,
@@ -24,7 +24,6 @@ fn main() {
 }
 
 fn model(app: &App) -> Model {
-
     let _window = app.new_window().view(view).build().unwrap();
     let in_dev = select_input_dev();
     let input_dev_and_cfg = AudioDevAndCfg::new(Some(in_dev), None);
@@ -34,7 +33,7 @@ fn model(app: &App) -> Model {
 
     let visualize_spectrum: RefCell<Vec<(f64, f64)>> = RefCell::new(vec![(0.0, 0.0); 1024]);
     stream.play().unwrap();
-    
+
     Model {
         _window,
         latest_audio_data,
@@ -46,7 +45,11 @@ fn model(app: &App) -> Model {
 fn update(_app: &App, model: &mut Model, _update: Update) {
     // Update the model's latest audio data with the latest audio data from the ringbuffer.
     let latest_audio_data = model.latest_audio_data.lock().unwrap().to_vec();
-    let spectrum_data = to_spectrum(&latest_audio_data, model.sample_rate, &model.visualize_spectrum);
+    let spectrum_data = to_spectrum(
+        &latest_audio_data,
+        model.sample_rate,
+        &model.visualize_spectrum,
+    );
     *model.visualize_spectrum.borrow_mut() = spectrum_data;
 }
 
@@ -98,7 +101,11 @@ fn init_ringbuffer(sampling_rate: usize) -> Arc<Mutex<AllocRingBuffer<f32>>> {
     Arc::new(Mutex::new(buf))
 }
 // Assuming visualize_spectrum is a Vec<(f64, f64)>
-fn to_spectrum(audio: &[f32], sampling_rate: f32, visualize_spectrum: &RefCell<Vec<(f64, f64)>>) -> Vec<(f64, f64)> {
+fn to_spectrum(
+    audio: &[f32],
+    sampling_rate: f32,
+    visualize_spectrum: &RefCell<Vec<(f64, f64)>>,
+) -> Vec<(f64, f64)> {
     let skip_elements = audio.len() - 2048;
     // spectrum analysis only of the latest 46ms
     let relevant_samples = &audio[skip_elements..skip_elements + 2048];
@@ -131,4 +138,3 @@ fn to_spectrum(audio: &[f32], sampling_rate: f32, visualize_spectrum: &RefCell<V
 
     visualize_spectrum.borrow().clone()
 }
-

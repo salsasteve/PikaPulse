@@ -1,8 +1,8 @@
-use crate::audio_setup::{setup_input_config, setup_live_input};
-use crate::utils::init_ringbuffer;
 use cpal::traits::StreamTrait;
+use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::Stream;
-use ringbuffer::AllocRingBuffer;
+use cpal::{Device, StreamConfig};
+use ringbuffer::{AllocRingBuffer, RingBuffer};
 use std::sync::{Arc, Mutex};
 
 /// A struct that manages audio recording using CPAL.
@@ -10,9 +10,13 @@ use std::sync::{Arc, Mutex};
 /// The `Recorder` struct is responsible for handling audio recording, including
 /// setting up the stream, storing the latest audio data, and controlling the recording process.
 pub struct Recorder {
+    host: cpal::Host,
+    device: Device,
+    config: StreamConfig,
+    sample_bit_depth: u8,
     stream: Stream,
-    latest_audio_data: Arc<Mutex<AllocRingBuffer<f32>>>,
-    sample_rate: f32,
+    latest_audio_data: Arc<Mutex<AllocRingBuffer<i16>>>,
+    sample_rate: u32,
 }
 
 impl Recorder {
@@ -23,19 +27,71 @@ impl Recorder {
     ///
     /// # Returns
     /// * `Recorder` - A new instance of `Recorder`.
-    pub fn new() -> Recorder {
-        let dev_and_cfg = setup_input_config();
-        let sample_rate = dev_and_cfg.cfg().sample_rate.0 as f32;
-        let latest_audio_data = init_ringbuffer(sample_rate as usize);
-        let stream = setup_live_input(latest_audio_data.clone(), dev_and_cfg);
+    pub fn new(
+        preferred_dev: Option<cpal::Device>,
+        preferred_cfg: Option<cpal::StreamConfig>,
+        preferred_sample_rate: Option<u32>,
+        preferred_bit_depth: Option<u8>,
+    ) -> Recorder {
+
+        let sample_rate:u32 = preferred_sample_rate.unwrap_or(48000);
+        let sample_bit_depth:u8 = preferred_bit_depth.unwrap_or(16);
+
+        let latest_audio_data = Recorder::init_ringbuffer(sample_rate as usize);
+
+        let host = cpal::default_host();
+        let device = preferred_dev.unwrap_or_else(|| {
+            let devices: Vec<Device> = host.input_devices().unwrap().collect();
+            if devices.is_empty() {
+                panic!(
+                    "No input devices found for host {}",
+                    host.id().name()
+                );
+            }
+            devices.into_iter().nth(0).unwrap()
+        });
+        
+        let config = preferred_cfg.unwrap_or_else(|| {
+            Recorder::find_supported_config(&device, sample_rate).unwrap_or_else(|| {
+                panic!(
+                    "No supported stream configuration found for device '{}'",
+                    device.name().unwrap_or_else(|_| "<unknown>".to_string())
+                )
+            })
+        });
+
+        let stream = Recorder::setup_audio_input_loop(latest_audio_data.clone(), &device, &config);
 
         Recorder {
+            host,
+            device,
+            config,
+            sample_bit_depth,
             stream,
             latest_audio_data,
             sample_rate,
         }
     }
 
+    fn find_supported_config(device: &Device, sample_rate: u32) -> Option<StreamConfig> {
+        let configs = device.supported_input_configs().ok()?;
+        for config in configs {
+            if config.min_sample_rate().0 <= sample_rate && config.max_sample_rate().0 >= sample_rate {
+                return Some(StreamConfig {
+                    channels: config.channels(),
+                    sample_rate: cpal::SampleRate(sample_rate),
+                    buffer_size: cpal::BufferSize::Default,
+                });
+            }
+        }
+        None
+    }
+
+    pub fn init_ringbuffer(sampling_rate: usize) -> Arc<Mutex<AllocRingBuffer<i16>>> {
+        let mut buf = AllocRingBuffer::new((5 * sampling_rate).next_power_of_two());
+        buf.fill(0i16);
+        Arc::new(Mutex::new(buf))
+    }
     /// Starts the audio recording stream.
     ///
     /// Begins capturing audio data and storing it in the buffer.
@@ -52,11 +108,7 @@ impl Recorder {
         self.stream.pause().unwrap();
     }
 
-    /// Retrieves the sample rate of the audio stream.
-    ///
-    /// # Returns
-    /// * `f32` - The sample rate at which the audio is being recorded.
-    pub fn get_sample_rate(&self) -> f32 {
+    pub fn get_sample_rate(&self) -> u32 {
         self.sample_rate
     }
 
@@ -65,19 +117,76 @@ impl Recorder {
     /// This method can be used to access the audio data being captured by the recorder.
     ///
     /// # Returns
-    /// * `Arc<Mutex<AllocRingBuffer<f32>>>` - A thread-safe reference to the buffer containing the latest audio data.
-    pub fn get_latest_audio_data(&self) -> Arc<Mutex<AllocRingBuffer<f32>>> {
+    /// * `Arc<Mutex<AllocRingBuffer<i16>>>` - A thread-safe reference to the buffer containing the latest audio data.
+    pub fn get_latest_audio_data(&self) -> Arc<Mutex<AllocRingBuffer<i16>>> {
         self.latest_audio_data.clone()
     }
 
-    // pub fn record(&mut self) {
-        
-    // }
+    pub fn setup_audio_input_loop(
+        latest_audio_data: Arc<Mutex<AllocRingBuffer<i16>>>,
+        dev: &Device,
+        cfg: &StreamConfig,
+    ) -> cpal::Stream {
 
-    // fn setup_writer_for_recording(&self) -> Result<WavWriterHandle, anyhow::Error> {
-    //     let spec = AudioClip::wav_spec_from_config(&self.output_config);
-    //     let writer = WavWriter::create(&self.file_path, spec)?;
-    //     Ok(Arc::new(Mutex::new(Some(writer))))
-    // }
+        eprintln!(
+            "Using input device '{}' with config: {:?}",
+            dev.name()
+                .as_ref()
+                .map(|x| x.as_str())
+                .unwrap_or("<unknown>"),
+            cfg
+        );
+
+        assert!(
+            cfg.channels == 1 || cfg.channels == 2,
+            "only supports Mono or Stereo channels!"
+        );
+
+        if cfg.sample_rate.0 != 44100 && cfg.sample_rate.0 != 48000 {
+            eprintln!(
+                "WARN: sampling rate is {}, but the crate was only tested with 44,1/48khz.",
+                cfg.sample_rate.0
+            );
+        }
+
+        let is_mono = cfg.channels == 1;
+
+        let stream = dev
+            .build_input_stream(
+                // This is not as easy as it might look. Even if the supported configs show, that a
+                // input device supports a given fixed buffer size, ALSA but also WASAPI tend to
+                // fail with unclear error messages. I found out, that using the default option is the
+                // only variant that is working on all platforms (Windows, Mac, Linux). The buffer
+                // size tends to be not as small as it would be optimal (for super low latency)
+                // but is still good enough (for example ~10ms on Windows) or ~6ms on ALSA (in my
+                // tests).
+                cfg,
+                // this is pretty cool by "cpal"; we can use u16, i16 or f32 and
+                // the type system does all the magic behind the scenes. f32 also works
+                // on Windows (WASAPI), MacOS (coreaudio), and Linux (ALSA).
+                // TODO: I found out that we probably can't rely on the fact, that every audio input device
+                //  supports f32. I guess, I need to check this in the supported audio stream config too..
+                move |data: &[i16], _info| {
+                    let mut audio_buf = latest_audio_data.lock().unwrap();
+                    // Audio buffer only contains Mono data
+                    if is_mono {
+                        audio_buf.extend(data.iter().copied());
+                    } else {
+                        // interleaving for stereo is LRLR (de-facto standard?)
+                        audio_buf.extend(
+                            data.chunks_exact(2)
+                                .map(|vals| ((vals[0] as f32 + vals[1] as f32) / 2.0) as i16),
+                        )
+                    }
+                },
+                |err| {
+                    eprintln!("got stream error: {:#?}", err);
+                },
+                None,
+            )
+            .unwrap();
+
+        stream
+    }
 
 }

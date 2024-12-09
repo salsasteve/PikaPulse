@@ -1,15 +1,16 @@
 use dotenv::dotenv;
-use nannou::prelude::*;
 use nannou;
+use nannou::prelude::*;
 use pika_pulse::recorder::Recorder;
+use pika_pulse::visualizer::circle::sun;
 use ringbuffer::RingBuffer;
 use spectrum_analyzer::{
-    samples_fft_to_spectrum, scaling::divide_by_N, windows::hann_window, FrequencyLimit,
+    samples_fft_to_spectrum, scaling::divide_by_N, FrequencyLimit,
     FrequencySpectrum, FrequencyValue,
 };
 use std::cell::RefCell;
 use std::cmp::max;
-use pika_pulse::visualizer::circle::sun;
+use libm::cosf;
 
 struct Model {
     _window: window::Id,
@@ -32,7 +33,7 @@ fn model(app: &App) -> Model {
     // let input_dev_and_cfg = AudioDevAndCfg::new(Some(in_dev), None);
     // let sample_rate = input_dev_and_cfg.cfg().sample_rate.0 as f32;
     // let latest_audio_data = init_ringbuffer(sample_rate as usize);
-    let mut recorder = Recorder::new();
+    let mut recorder = Recorder::new(None, None, None, None);
 
     let visualize_spectrum: RefCell<Vec<(f64, f64)>> = RefCell::new(vec![(0.0, 0.0); 1024]);
 
@@ -99,29 +100,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.to_frame(app, &frame).unwrap();
 }
 
-/// Selects an audio input device based on user input.
-// fn select_input_dev() -> cpal::Device {
-//     let mut devs = list_input_devs();
-//     assert!(!devs.is_empty(), "no input devices found!");
-//     if devs.len() == 1 {
-//         return devs.remove(0).1;
-//     }
-
-//     println!("Select an input device:");
-//     devs.iter().enumerate().for_each(|(i, (name, dev))| {
-//         println!("  [{}] {} {:?}", i, name, dev.default_input_config().unwrap());
-//     });
-
-//     let mut input = String::new();
-//     stdin().lock().read_line(&mut input).unwrap();
-//     let index = input[0..1].parse::<usize>().unwrap();
-//     devs.remove(index).1
-// }
-
 /// Processes audio data to generate a frequency spectrum.
 fn to_spectrum(
-    audio: &[f32],
-    sampling_rate: f32,
+    audio: &[i16],
+    sampling_rate: u32,
     visualize_spectrum: &RefCell<Vec<(f64, f64)>>,
 ) -> Vec<(f64, f64)> {
     let relevant_samples = select_recent_samples(audio, 2048);
@@ -132,7 +114,7 @@ fn to_spectrum(
     update_visualization(latest_spectrum, visualize_spectrum)
 }
 
-fn select_recent_samples(audio: &[f32], sample_count: usize) -> Vec<f32> {
+fn select_recent_samples(audio: &[i16], sample_count: usize) -> Vec<i16> {
     audio
         .iter()
         .skip(audio.len() - sample_count)
@@ -140,10 +122,10 @@ fn select_recent_samples(audio: &[f32], sample_count: usize) -> Vec<f32> {
         .collect()
 }
 
-fn perform_fft(samples: &[f32], sampling_rate: f32) -> FrequencySpectrum {
+fn perform_fft(samples: &[f32], sampling_rate: u32) -> FrequencySpectrum {
     samples_fft_to_spectrum(
         samples,
-        sampling_rate as u32,
+        sampling_rate,
         FrequencyLimit::All,
         Some(&divide_by_N),
     )
@@ -178,4 +160,21 @@ fn update_visualization(
         });
 
     visualize_spectrum.borrow().clone()
+}
+
+
+pub fn hann_window(samples: &[i16]) -> Vec<f32> {
+    let mut windowed_samples = Vec::with_capacity(samples.len());
+    let samples_len_f32 = samples.len() as f32;
+    for (i, sample) in samples.iter().enumerate() {
+        let two_pi_i = 2.0 * PI * i as f32;
+        let idontknowthename = cosf(two_pi_i / samples_len_f32);
+        let multiplier = 0.5 * (1.0 - idontknowthename);
+        windowed_samples.push(multiplier * i16_to_f32(*sample))
+    }
+    windowed_samples
+}
+
+pub fn i16_to_f32(sample: i16) -> f32 {
+    sample as f32 / i16::MAX as f32 
 }
