@@ -5,10 +5,6 @@ use cpal::{Device, StreamConfig};
 use ringbuffer::{AllocRingBuffer, RingBuffer};
 use std::sync::{Arc, Mutex};
 
-/// A struct that manages audio recording using CPAL.
-///
-/// The `Recorder` struct is responsible for handling audio recording, including
-/// setting up the stream, storing the latest audio data, and controlling the recording process.
 pub struct Recorder {
     host: cpal::Host,
     device: Device,
@@ -20,22 +16,14 @@ pub struct Recorder {
 }
 
 impl Recorder {
-    /// Constructs a new `Recorder` instance.
-    ///
-    /// Initializes the audio input configuration, sets up the live input stream, and
-    /// prepares the buffer for storing the latest audio data.
-    ///
-    /// # Returns
-    /// * `Recorder` - A new instance of `Recorder`.
     pub fn new(
         preferred_dev: Option<cpal::Device>,
         preferred_cfg: Option<cpal::StreamConfig>,
         preferred_sample_rate: Option<u32>,
         preferred_bit_depth: Option<u8>,
     ) -> Recorder {
-
-        let sample_rate:u32 = preferred_sample_rate.unwrap_or(48000);
-        let sample_bit_depth:u8 = preferred_bit_depth.unwrap_or(16);
+        let sample_rate: u32 = preferred_sample_rate.unwrap_or(48000);
+        let sample_bit_depth: u8 = preferred_bit_depth.unwrap_or(16);
 
         let latest_audio_data = Recorder::init_ringbuffer(sample_rate as usize);
 
@@ -43,14 +31,11 @@ impl Recorder {
         let device = preferred_dev.unwrap_or_else(|| {
             let devices: Vec<Device> = host.input_devices().unwrap().collect();
             if devices.is_empty() {
-                panic!(
-                    "No input devices found for host {}",
-                    host.id().name()
-                );
+                panic!("No input devices found for host {}", host.id().name());
             }
             devices.into_iter().nth(0).unwrap()
         });
-        
+
         let config = preferred_cfg.unwrap_or_else(|| {
             Recorder::find_supported_config(&device, sample_rate).unwrap_or_else(|| {
                 panic!(
@@ -76,7 +61,9 @@ impl Recorder {
     fn find_supported_config(device: &Device, sample_rate: u32) -> Option<StreamConfig> {
         let configs = device.supported_input_configs().ok()?;
         for config in configs {
-            if config.min_sample_rate().0 <= sample_rate && config.max_sample_rate().0 >= sample_rate {
+            if config.min_sample_rate().0 <= sample_rate
+                && config.max_sample_rate().0 >= sample_rate
+            {
                 return Some(StreamConfig {
                     channels: config.channels(),
                     sample_rate: cpal::SampleRate(sample_rate),
@@ -92,18 +79,11 @@ impl Recorder {
         buf.fill(0i16);
         Arc::new(Mutex::new(buf))
     }
-    /// Starts the audio recording stream.
-    ///
-    /// Begins capturing audio data and storing it in the buffer.
-    /// This method should be called when you want to start recording.
+
     pub fn start(&mut self) {
         self.stream.play().unwrap();
     }
 
-    /// Pauses the audio recording stream.
-    ///
-    /// Stops capturing audio data without terminating the stream.
-    /// This method can be used to temporarily halt recording.
     pub fn stop(&mut self) {
         self.stream.pause().unwrap();
     }
@@ -111,13 +91,6 @@ impl Recorder {
     pub fn get_sample_rate(&self) -> u32 {
         self.sample_rate
     }
-
-    /// Provides a clone of the Arc containing the latest audio data.
-    ///
-    /// This method can be used to access the audio data being captured by the recorder.
-    ///
-    /// # Returns
-    /// * `Arc<Mutex<AllocRingBuffer<i16>>>` - A thread-safe reference to the buffer containing the latest audio data.
     pub fn get_latest_audio_data(&self) -> Arc<Mutex<AllocRingBuffer<i16>>> {
         self.latest_audio_data.clone()
     }
@@ -127,7 +100,6 @@ impl Recorder {
         dev: &Device,
         cfg: &StreamConfig,
     ) -> cpal::Stream {
-
         eprintln!(
             "Using input device '{}' with config: {:?}",
             dev.name()
@@ -188,5 +160,4 @@ impl Recorder {
 
         stream
     }
-
 }

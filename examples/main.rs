@@ -1,16 +1,18 @@
 use dotenv::dotenv;
+use libm::cosf;
+use microfft::real::rfft_1024;
 use nannou;
 use nannou::prelude::*;
 use pika_pulse::recorder::Recorder;
 use pika_pulse::visualizer::circle::sun;
 use ringbuffer::RingBuffer;
 use spectrum_analyzer::{
-    samples_fft_to_spectrum, scaling::divide_by_N, FrequencyLimit,
-    FrequencySpectrum, FrequencyValue,
+    samples_fft_to_spectrum, scaling::divide_by_N, FrequencyLimit, FrequencySpectrum,
+    FrequencyValue,
 };
 use std::cell::RefCell;
 use std::cmp::max;
-use libm::cosf;
+use std::f32::consts::PI;
 
 struct Model {
     _window: window::Id,
@@ -59,7 +61,12 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
         .unwrap()
         .to_vec();
     let sample_rate = model.recorder.get_sample_rate();
-    let spectrum_data = to_spectrum(&latest_audio_data, sample_rate, &model.visualize_spectrum);
+    let spectrum_data = to_spectrum(
+        &latest_audio_data,
+        sample_rate,
+        &model.visualize_spectrum,
+        1024,
+    );
     *model.visualize_spectrum.borrow_mut() = spectrum_data;
 }
 
@@ -105,8 +112,9 @@ fn to_spectrum(
     audio: &[i16],
     sampling_rate: u32,
     visualize_spectrum: &RefCell<Vec<(f64, f64)>>,
+    sample_count: usize,
 ) -> Vec<(f64, f64)> {
-    let relevant_samples = select_recent_samples(audio, 2048);
+    let relevant_samples = select_recent_samples(audio, sample_count);
 
     let hann_window = hann_window(&relevant_samples);
     let latest_spectrum = perform_fft(&hann_window, sampling_rate);
@@ -126,10 +134,20 @@ fn perform_fft(samples: &[f32], sampling_rate: u32) -> FrequencySpectrum {
     samples_fft_to_spectrum(
         samples,
         sampling_rate,
-        FrequencyLimit::All,
+        FrequencyLimit::Range(20.0, 24000.0),
         Some(&divide_by_N),
     )
     .unwrap()
+}
+
+fn perform_fft2(samples: &[f32]) -> Vec<u32> {
+    let mut buffer: [_; 1024] = samples.try_into().unwrap();
+    let spectrum = rfft_1024(&mut buffer);
+
+    spectrum[0].im = 0.0;
+    let amplitudes: Vec<_> = spectrum.iter().map(|c| c.norm() as u32).collect();
+
+    amplitudes
 }
 
 fn update_visualization(
@@ -162,7 +180,6 @@ fn update_visualization(
     visualize_spectrum.borrow().clone()
 }
 
-
 pub fn hann_window(samples: &[i16]) -> Vec<f32> {
     let mut windowed_samples = Vec::with_capacity(samples.len());
     let samples_len_f32 = samples.len() as f32;
@@ -176,5 +193,6 @@ pub fn hann_window(samples: &[i16]) -> Vec<f32> {
 }
 
 pub fn i16_to_f32(sample: i16) -> f32 {
-    sample as f32 / i16::MAX as f32 
+    sample as f32 / i16::MAX as f32
 }
+

@@ -20,6 +20,7 @@ nannou = "0.18.1"
 tracing = "0.1.41"
 microfft = "0.6.0"
 libm = "0.2.11"
+approx = "0.5.1"
 
 [dev-dependencies]
 minimp3 = "0.5.1"
